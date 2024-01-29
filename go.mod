@@ -10,5 +10,6 @@ require (
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/jfreymuth/pulse v0.1.1-0.20210727160034-392febcff724
 	github.com/pion/rtp v1.6.5
+	github.com/vishen/go-chromecast v0.3.1
 	howett.net/plist v0.0.0-20201203080718-1454fab16a06
 )
