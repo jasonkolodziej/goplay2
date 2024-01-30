@@ -8,6 +8,7 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/gordonklaus/portaudio v0.0.0-20200911161147-bb74aa485641
 	github.com/grandcat/zeroconf v1.0.0
+	github.com/hashicorp/mdns v1.0.5
 	github.com/jfreymuth/pulse v0.1.1-0.20210727160034-392febcff724
 	github.com/pion/rtp v1.6.5
 	github.com/sirupsen/logrus v1.8.1

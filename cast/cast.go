@@ -200,7 +200,8 @@ func (a AirplayDevice) RunRTSP(clockDelay *int) error {
 
 // discoverLocalInterfaces disovers interfaces used
 // by the device executing this function
-func discoverLocalInterfaces() {
+func discoverLocalInterfaces() []net.Interface {
+	var ret []net.Interface
 	netFaces, err := net.Interfaces()
 	if err != nil {
 		panic(err)
@@ -214,9 +215,11 @@ func discoverLocalInterfaces() {
 			ipNet, ok := addr.(*net.IPNet)
 			if ok && !ipNet.IP.IsLoopback() && ipNet.IP.To4() != nil {
 				fmt.Println(ipNet.IP)
+				ret = append(ret, face)
 			}
 		}
 	}
+	return ret
 }
 
 func GetCastDevices(ifaceName string, timeoutSec uint) {
@@ -236,11 +239,15 @@ func GetCastDevices(ifaceName string, timeoutSec uint) {
 		log.Debugf("unable to discover chromecast devices: %v", err)
 	}
 	// TODO: get MAC address
-	const ii = 1
+	ii := 1
 	//? See go-chromecast.cmd.ls for use
 	for d := range castEntryChan {
 		fmt.Printf("%d) device=%q device_name=%q address=\"%s:%d\" uuid=%q",
 			ii, d.Device, d.DeviceName, d.AddrV4, d.Port, d.UUID)
+		ii++
+	}
+	if ii == 1 {
+		log.Error("no cast devices found on network")
 	}
 }
 
