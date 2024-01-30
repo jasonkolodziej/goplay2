@@ -4,14 +4,20 @@ import (
 	"context"
 	"fmt"
 	"goplay2/audio"
+	"goplay2/config"
+	"goplay2/globals"
 	"goplay2/handlers"
+	"goplay2/homekit"
 	"goplay2/ptp"
 	"goplay2/rtsp"
 	"net"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/brutella/hc/event"
-	"github.com/gogo/protobuf/test/issue312/events"
 	"github.com/grandcat/zeroconf"
 	"github.com/vishen/go-chromecast/dns"
 )
@@ -23,62 +29,72 @@ import (
 type CastDevice struct {
 	dns.CastEntry
 	netInterface *net.Interface
-	HwAddr net.HardwareAddr 
+	HwAddr       net.HardwareAddr
 }
+
 /*	CastDeviceEntry extends dns.CastDNSEntry
  *	by providing the MAC Address as well the associated
  *	net.Interface for the Chromecast Device
-*/
+ */
 type DeviceEntry interface {
 	dns.CastDNSEntry
 	NetInterface() *net.Interface
-	HardwareAddr()  net.HardwareAddr
+	HardwareAddr() net.HardwareAddr
+	Entry() *CastDevice
 }
 
 func (d CastDevice) NetInterface() {
 
 }
 
+func (d CastDevice) Entry() *CastDevice {
+	return &d
+}
+
 func (d CastDevice) HardwareAddr() net.HardwareAddr {
 	return d.HwAddr
 }
 
+type RTSPHandle = handlers.Rstp
+
 type AirplayDevice struct {
-	s 			*zeroconf.Server
-	clock  		*ptp.VirtualClock
-	ptp			*ptp.Server
-	audioBuf	*audio.Ring 
-	player 		*audio.Player
-	rtsp		*rtsp.Server
-	rHandle 	*rtsp.Handler
+	s        *zeroconf.Server
+	clock    *ptp.VirtualClock
+	ptp      *ptp.Server
+	audioBuf *audio.Ring
+	player   *audio.Player
+	rtsp     *rtsp.Server
+	rHandle  *RTSPHandle
 	// TODO: do we need an event server?
 }
 
 type AirplayReciever interface {
 	Create(device *DeviceEntry) *AirplayDevice
-	Registration(name *string, net *net.Interface)	*zeroconf.Server
-	Clock()						*ptp.VirtualClock
-	PtpServer()					*ptp.Server
-	RingBuffer() 				*audio.Ring
-	Player()					*audio.Player
-	RTSPHandler()				*handlers.Rstp
-	RunRTSP()					error
+	Registration(name *string, net *net.Interface) *zeroconf.Server
+	Clock() *ptp.VirtualClock
+	PtpServer() *ptp.Server
+	RingBuffer() *audio.Ring
+	Player() *audio.Player
+	RTSPHandler() *handlers.Rstp
+	RunRTSP() error
 }
 
-func (a *AirplayDevice)Create(device *DeviceEntry) *AirplayDevice {
+func (a *AirplayDevice) Create(device *DeviceEntry) *AirplayDevice {
 	a := &AirplayDevice{}
 	if device != nil {
-		a.Registration(*device.DeviceName, ...)
+		// TODO: Fix
+		a.Registration(&(*device).Entry().Name, nil)
 	}
+	return a
 }
 
-func (a *AirplayDevice) Registration(name *string, net *net.Interface) *zerconf.Server {
+func (a *AirplayDevice) Registration(name *string, net *net.Interface) *zeroconf.Server {
 	// Create 0-cfg
 	if a.s != nil {
 		return a.s
 	}
 	a.s, err := zeroconf.Register(*name, "_airplay._tcp", "local.",
-	7000, homekit.Device.ToRecords(), []net.Interface{*net})
+		7000, homekit.Device.ToRecords(), []net.Interface{*net})
 	if err != nil {
 		panic(fmt.Errorf("Registration: %s", err))
 	}
@@ -92,7 +108,7 @@ func (a AirplayDevice) Clock(delay *int64) *ptp.VirtualClock {
 	if delay != nil {
 		a.clock = ptp.NewVirtualClock(*delay)
 	} else {
-		a.clock = ptp.NewVirtualClock()
+		a.clock = ptp.NewVirtualClock(0)
 	}
 	return a.clock
 }
@@ -101,7 +117,7 @@ func (a AirplayDevice) PtpServer() *ptp.Server {
 	if a.ptp != nil {
 		return a.ptp
 	}
-	a.ptp = ptp.NewServer(a.Clock())
+	a.ptp = ptp.NewServer(a.Clock(nil))
 	return a.ptp
 }
 func (a AirplayDevice) RingBuffer() *audio.Ring {
@@ -113,11 +129,11 @@ func (a AirplayDevice) RingBuffer() *audio.Ring {
 	return a.audioBuf
 }
 
-func (a AirplayDevice) Player() *audio.Player {
+func (a AirplayDevice) Player(clockDelay *int64) *audio.Player {
 	if a.player != nil {
 		return a.player
 	}
-	a.player = audio.NewPlayer(a.Clock(), a.audioBuf)
+	a.player = audio.NewPlayer(a.Clock(clockDelay), a.audioBuf)
 	return a.player
 }
 
@@ -139,23 +155,22 @@ func (a AirplayDevice) RunRTSP() error {
 	return nil
 }
 
-
 // discoverLocalInterfaces disovers interfaces used
 // by the device executing this function
 func discoverLocalInterfaces() {
 	netFaces, err := net.Interfaces()
-    if err != nil {
-        panic(err)
-    }
-    for _, face := range netFaces {
+	if err != nil {
+		panic(err)
+	}
+	for _, face := range netFaces {
 		addrs := face.Addrs()
 		for _, addr := range addrs {
 			ipNet, ok := addr.(*net.IPNet)
 			if ok && !ipNet.IP.IsLoopback() && ipNet.IP.To4() != nil {
-			fmt.Println(ipNet.IP)
+				fmt.Println(ipNet.IP)
+			}
 		}
-    }
-}
+	}
 }
 
 func GetCastDevices(ifaceName string, timeoutSec uint) {
@@ -178,7 +193,7 @@ func GetCastDevices(ifaceName string, timeoutSec uint) {
 	//? See go-chromecast.cmd.ls for use
 	for i, d := range castEntryChan {
 		fmt.Printf("%d) device=%q device_name=%q address=\"%s:%d\" uuid=%q",
-		i+1, d.Device, d.DeviceName, d.AddrV4, d.Port, d.UUID)
+			i+1, d.Device, d.DeviceName, d.AddrV4, d.Port, d.UUID)
 	}
 }
 
@@ -188,7 +203,7 @@ func CreateVirtualAirplayReciever(device *CastDevice) {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	// uses net.InterfaceByName
 	macAddress := strings.ToUpper(device.HwAddr.String())
 	ipAddresses, err := iFace.Addrs()
@@ -201,7 +216,7 @@ func CreateVirtualAirplayReciever(device *CastDevice) {
 	delay := 100
 	// clock := ptp.NewVirtualClock(delay)
 	a.Clock(delay)
-	
+
 	// ptpServer := ptp.NewServer(clock)
 	a.PtpServer()
 
@@ -216,7 +231,7 @@ func CreateVirtualAirplayReciever(device *CastDevice) {
 	wg.Add(4)
 
 	go func() {
-		player.Run()
+		a.Player(nil).Run()
 		wg.Done()
 	}()
 
@@ -226,7 +241,7 @@ func CreateVirtualAirplayReciever(device *CastDevice) {
 	}()
 
 	go func() {
-		ptpServer.Serve()
+		a.PtpServer().Serve()
 		wg.Done()
 	}()
 
