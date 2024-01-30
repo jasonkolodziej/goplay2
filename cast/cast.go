@@ -12,11 +12,11 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"unicode/utf8"
 
-	"github.com/brutella/hc/event"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/grandcat/zeroconf"
 	"github.com/vishen/go-chromecast/dns"
 )
@@ -39,11 +39,11 @@ type DeviceEntry interface {
 	dns.CastDNSEntry
 	NetInterface() *net.Interface
 	HardwareAddr() net.HardwareAddr
-	Entry() *CastDevice
+	// Entry() *CastDevice
 }
 
-func (d CastDevice) NetInterface() {
-
+func (d CastDevice) NetInterface() *net.Interface {
+	return nil
 }
 
 func (d CastDevice) Entry() *dns.CastEntry {
@@ -64,11 +64,13 @@ type AirplayDevice struct {
 	player   *audio.Player
 	rtsp     *rtsp.Server
 	rHandle  *handlers.Rstp
+	svcEntry *zeroconf.ServiceEntry
 	// TODO: do we need an event server?
 }
 
 type AirplayReciever interface {
 	Create(device *DeviceEntry) *AirplayDevice
+	svcEntryTemplate() *zeroconf.ServiceEntry
 	Registration(name string, net *net.Interface) *zeroconf.Server
 	Clock(delay *int) *ptp.VirtualClock
 	PtpServer(clockDelay *int) *ptp.Server
@@ -78,30 +80,50 @@ type AirplayReciever interface {
 	RunRTSP(clockDelay *int) error
 }
 
+func (a *AirplayDevice) svcEntryTemplate() *zeroconf.ServiceEntry {
+	if a != nil && a.svcEntry != nil {
+		return a.svcEntry
+	} else {
+		// all nil
+		a = &AirplayDevice{
+			svcEntry: zeroconf.NewServiceEntry(
+				"",              //! Instance will need to be changed later
+				"_airplay._tcp", // Service
+				"local."),       // Domain name
+		}
+		a.svcEntry.Port = 7000 //? Airplay2 Port #
+	}
+	return a.svcEntry
+}
+
 func (a *AirplayDevice) Create(device *DeviceEntry, virtual bool) *AirplayDevice {
 	if a != nil && device != nil {
 		// TODO: Fix
-		a.Registration(&device, nil, virtual)
+		a.Registration((*device).(CastDevice), nil, virtual)
 		return a
 	} else if device != nil {
 		//? a is nil
 		a = &AirplayDevice{}
-		a.Registration(&device, nil, virtual)
+		// dev := *device
+		// d, ok := dev.(CastDevice)
+		a.Registration((*device).(CastDevice), nil, virtual)
 	}
 	return a
 }
 
-func (a *AirplayDevice) Registration(d DeviceEntry, iface *net.Interface, proxy bool) *zeroconf.Server {
+func (a *AirplayDevice) Registration(d CastDevice, iface *net.Interface, proxy bool) *zeroconf.Server {
 	// Create 0-cfg
 	var err error = nil
 	if a.s != nil {
 		return a.s
 	}
+	t := a.svcEntryTemplate() // template
 	if !proxy {
-		a.s, err = zeroconf.Register(d.GetName(), "_airplay._tcp", "local.",
-			7000, homekit.Device.ToRecords(), []net.Interface{*iface})
+		a.s, err = zeroconf.Register(d.GetName(), t.Service, t.Domain,
+			t.Port, homekit.Device.ToRecords(), []net.Interface{*iface})
 	} else {
-		a.s, err = zeroconf.RegisterProxy(d.GetName(), "_airplay._tcp", "local.", 7000)
+		a.s, err = zeroconf.RegisterProxy(d.GetName(), "_airplay._tcp", "local.",
+			7000, d.Host, []string{d.AddrV4.String(), d.AddrV6.String()}, nil, nil)
 	}
 	if err != nil {
 		panic(fmt.Errorf("Registration: %s", err))
@@ -202,7 +224,7 @@ func GetCastDevices(ifaceName string, timeoutSec uint) {
 	var err error
 	if ifaceName != "" {
 		if iface, err = net.InterfaceByName(ifaceName); err != nil {
-			exit("unable to find interface %q: %v", ifaceName, err)
+			log.Debugf("unable to find interface %q: %v", ifaceName, err)
 		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeoutSec))
@@ -211,7 +233,7 @@ func GetCastDevices(ifaceName string, timeoutSec uint) {
 	//? Refrence: https://thomasnguyen.site/function-returning-channel-pattern-in-go
 	castEntryChan, err := dns.DiscoverCastDNSEntries(ctx, iface)
 	if err != nil {
-		exit("unable to discover chromecast devices: %v", err)
+		log.Debugf("unable to discover chromecast devices: %v", err)
 	}
 	// TODO: get MAC address
 	const ii = 1
@@ -222,72 +244,73 @@ func GetCastDevices(ifaceName string, timeoutSec uint) {
 	}
 }
 
-func CreateVirtualAirplayReciever(device *CastDevice) {
-	// Interface of chromecast
-	iFace, err := net.InterfaceByName(ifName)
-	if err != nil {
-		panic(err)
-	}
+// func CreateVirtualAirplayReciever(device *CastDevice) {
+// 	// Interface of chromecast
+// 	iFace, err := net.InterfaceByName(ifName)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	// uses net.InterfaceByName
-	macAddress := strings.ToUpper(device.HwAddr.String())
-	ipAddresses, err := iFace.Addrs()
-	if err != nil {
-		panic(err)
-	}
-	var a AirplayDevice = &AirplayDevice{}
-	// Register ZeroConf Service
-	server := a.Registration()
-	delay := 100
-	// clock := ptp.NewVirtualClock(delay)
-	//! Passing nil will set the clock delay to 0, IF clock hasn't been intantiated
-	a.Clock(&delay)
+// 	// uses net.InterfaceByName
+// 	macAddress := strings.ToUpper(device.HwAddr.String())
+// 	ipAddresses, err := iFace.Addrs()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	var a AirplayDevice = &AirplayDevice{}
+// 	// Register ZeroConf Service
+// 	server := a.Registration()
+// 	delay := 100
+// 	// clock := ptp.NewVirtualClock(delay)
+// 	//! Passing nil will set the clock delay to 0, IF clock hasn't been intantiated
+// 	a.Clock(&delay)
 
-	// ptpServer := ptp.NewServer(clock)
-	a.PtpServer(nil)
+// 	// ptpServer := ptp.NewServer(clock)
+// 	a.PtpServer(nil)
 
-	// Divided by 100 -> average size of a RTP packet
-	// audioBuffer := audio.NewRing(globals.BufferSize / 100)
-	a.RingBuffer()
+// 	// Divided by 100 -> average size of a RTP packet
+// 	// audioBuffer := audio.NewRing(globals.BufferSize / 100)
+// 	a.RingBuffer()
 
-	// player := audio.NewPlayer(clock, audioBuffer)
-	a.Player(&delay)
+// 	// player := audio.NewPlayer(clock, audioBuffer)
+// 	a.Player(&delay)
 
-	wg := new(sync.WaitGroup)
-	wg.Add(4)
+// 	wg := new(sync.WaitGroup)
+// 	wg.Add(4)
 
-	go func() {
-		a.Player(nil).Run()
-		wg.Done()
-	}()
+// 	go func() {
+// 		a.Player(nil).Run()
+// 		wg.Done()
+// 	}()
 
-	go func() {
-		event.RunEventServer()
-		wg.Done()
-	}()
+// 	go func() {
+// 		event.RunEventServer()
+// 		wg.Done()
+// 	}()
 
-	go func() {
-		//? Assumes you have already set the clock Delay
-		a.PtpServer(nil).Serve()
-		wg.Done()
-	}()
+// 	go func() {
+// 		//? Assumes you have already set the clock Delay
+// 		a.PtpServer(nil).Serve()
+// 		wg.Done()
+// 	}()
 
-	go func() {
-		a.RTSPHandler(nil)
-		// handler, e := handlers.NewRstpHandler(config.Config.DeviceName, player)
-		if e != nil {
-			panic(e)
-		}
-		e = a.RunRTSP(nil)
-		// e = rtsp.RunRtspServer(handler)
-		if e != nil {
-			panic(e)
-		}
-		wg.Done()
-	}()
+// 	go func() {
+// 		//? handle, error
+// 		_, e := a.RTSPHandler(nil)
+// 		// handler, e := handlers.NewRstpHandler(config.Config.DeviceName, player)
+// 		if e != nil {
+// 			panic(e)
+// 		}
+// 		e = a.RunRTSP(nil)
+// 		// e = rtsp.RunRtspServer(handler)
+// 		if e != nil {
+// 			panic(e)
+// 		}
+// 		wg.Done()
+// 	}()
 
-	wg.Wait()
-}
+// 	wg.Wait()
+// }
 
 // DiscoverCastDNSEntries will return a channel with any cast dns entries
 // found.
@@ -322,10 +345,12 @@ func DiscoverCastDNSEntries(ctx context.Context, iface *net.Interface) (<-chan C
 					continue
 				}
 				castEntry := CastDevice{
-					Port: entry.Port,
-					Host: entry.HostName,
 					// //? Added by Jason
-					HwAddr: net.HardwareAddr(entry.Instance),
+					// HwAddr: net.HardwareAddr(),
+					CastEntry: dns.CastEntry{
+						Port: entry.Port,
+						Host: entry.HostName,
+					},
 				}
 				if len(entry.AddrIPv4) > 0 {
 					castEntry.AddrV4 = entry.AddrIPv4[0]
