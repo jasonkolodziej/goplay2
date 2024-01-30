@@ -156,6 +156,7 @@ func discoverLocalInterfaces() {
 		}
     }
 }
+}
 
 func GetCastDevices(ifaceName string, timeoutSec uint) {
 	var iface *net.Interface
