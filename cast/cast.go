@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"goplay2/audio"
-	"goplay2/config"
 	"goplay2/globals"
 	"goplay2/handlers"
 	"goplay2/homekit"
@@ -27,9 +26,9 @@ import (
  *	net.Interface for the Chromecast Device
  */
 type CastDevice struct {
-	dns.CastEntry
 	netInterface *net.Interface
 	HwAddr       net.HardwareAddr
+	dns.CastEntry
 }
 
 /*	CastDeviceEntry extends dns.CastDNSEntry
@@ -48,7 +47,7 @@ func (d CastDevice) NetInterface() {
 }
 
 func (d CastDevice) Entry() *dns.CastEntry {
-	return &dns.CastEntry(d)
+	return nil
 }
 
 func (d CastDevice) HardwareAddr() net.HardwareAddr {
@@ -70,7 +69,7 @@ type AirplayDevice struct {
 
 type AirplayReciever interface {
 	Create(device *DeviceEntry) *AirplayDevice
-	Registration(name *string, net *net.Interface) *zeroconf.Server
+	Registration(name string, net *net.Interface) *zeroconf.Server
 	Clock(delay *int) *ptp.VirtualClock
 	PtpServer(clockDelay *int) *ptp.Server
 	RingBuffer() *audio.Ring
@@ -79,22 +78,31 @@ type AirplayReciever interface {
 	RunRTSP(clockDelay *int) error
 }
 
-func (a *AirplayDevice) Create(device *DeviceEntry) *AirplayDevice {
-	a := &AirplayDevice{}
-	if device != nil {
+func (a *AirplayDevice) Create(device *DeviceEntry, virtual bool) *AirplayDevice {
+	if a != nil && device != nil {
 		// TODO: Fix
-		a.Registration(&(*device).Entry().Name, nil)
+		a.Registration(&device, nil, virtual)
+		return a
+	} else if device != nil {
+		//? a is nil
+		a = &AirplayDevice{}
+		a.Registration(&device, nil, virtual)
 	}
 	return a
 }
 
-func (a *AirplayDevice) Registration(name *string, net *net.Interface) *zeroconf.Server {
+func (a *AirplayDevice) Registration(d DeviceEntry, iface *net.Interface, proxy bool) *zeroconf.Server {
 	// Create 0-cfg
+	var err error = nil
 	if a.s != nil {
 		return a.s
 	}
-	a.s, err := zeroconf.Register(*name, "_airplay._tcp", "local.",
-		7000, homekit.Device.ToRecords(), []net.Interface{*net})
+	if !proxy {
+		a.s, err = zeroconf.Register(d.GetName(), "_airplay._tcp", "local.",
+			7000, homekit.Device.ToRecords(), []net.Interface{*iface})
+	} else {
+		a.s, err = zeroconf.RegisterProxy(d.GetName(), "_airplay._tcp", "local.", 7000)
+	}
 	if err != nil {
 		panic(fmt.Errorf("Registration: %s", err))
 	}
@@ -137,22 +145,33 @@ func (a AirplayDevice) Player(clockDelay *int) *audio.Player {
 	return a.player
 }
 
-func (a AirplayDevice) RTSPHandler(clockDelay *int) *handlers.Rstp {
+func (a AirplayDevice) RTSPHandler(clockDelay *int) (*handlers.Rstp, error) {
 	var err error = nil
 	if a.rHandle != nil {
-		return a.rHandle
+		return a.rHandle, nil
 	}
 	// a.Player should already have created a audio.Player
 	a.rHandle, err = handlers.NewRstpHandler("a.DeviceName()", a.Player(clockDelay))
 	if err != nil {
-		fmt.Errorf("RTSPHandler: %s", err)
+		err = fmt.Errorf("RTSPHandler: %s", err)
+		return nil, err
 	}
-	return a.rHandle
+	return a.rHandle, nil
 }
+
+/*	RunRTSP will ask internally for the RTSPHandler a AirplayDevice
+*	and respectfully pass clockDelay if a.clock's delay has not been set yet.
+*	if and when a.rHandler is set then the function will invoke rtsp.RunRtspServer
+*	returning an error at any point.
+ */
 func (a AirplayDevice) RunRTSP(clockDelay *int) error {
-	err := rtsp.RunRtspServer(a.RTSPHandler(clockDelay))
-	if err != nil {
-		panic(fmt.Errorf("RunRTSP: %s", err))
+	// h, err := a.RTSPHandler(clockDelay)
+	if h, err := a.RTSPHandler(clockDelay); err != nil {
+		err := fmt.Errorf("RunRTSP: at Handle - %s", err)
+		return err
+	} else if err := rtsp.RunRtspServer(h); err != nil {
+		err := fmt.Errorf("RunRTSP: %s", err)
+		return err
 	}
 	return nil
 }
@@ -255,7 +274,7 @@ func CreateVirtualAirplayReciever(device *CastDevice) {
 
 	go func() {
 		a.RTSPHandler(nil)
-		handler, e := handlers.NewRstpHandler(config.Config.DeviceName, player)
+		// handler, e := handlers.NewRstpHandler(config.Config.DeviceName, player)
 		if e != nil {
 			panic(e)
 		}
@@ -303,11 +322,10 @@ func DiscoverCastDNSEntries(ctx context.Context, iface *net.Interface) (<-chan C
 					continue
 				}
 				castEntry := CastDevice{
-					dns.CastEntry{Port: entry.Port, Host: entry.HostName},
-					// Port: entry.Port,
-					// Host: entry.HostName,
+					Port: entry.Port,
+					Host: entry.HostName,
 					// //? Added by Jason
-					// HwAddr: entry.HardwareAddr,
+					HwAddr: net.HardwareAddr(entry.Instance),
 				}
 				if len(entry.AddrIPv4) > 0 {
 					castEntry.AddrV4 = entry.AddrIPv4[0]
