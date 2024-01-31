@@ -28,8 +28,8 @@ import (
  *	net.Interface for the Chromecast Device
  */
 type CastDevice struct {
-	netInterface *net.Interface
-	HwAddr       net.HardwareAddr
+	svcEntry *zeroconf.ServiceEntry
+	HwAddr   net.HardwareAddr
 	dns.CastEntry
 }
 
@@ -46,18 +46,67 @@ const (
  */
 type DeviceEntry interface {
 	dns.CastDNSEntry
-	NetInterface() *net.Interface
+	// NetInterface() *net.Interface
 	HardwareAddr() net.HardwareAddr
+	ServiceEntry() *zeroconf.ServiceEntry
+	FromEntry(svc *zeroconf.ServiceEntry) *CastDevice
+	svcEntryTemplate() *zeroconf.ServiceEntry
 	// Entry() *CastDevice
 }
 
-func (d CastDevice) NetInterface() *net.Interface {
+func (d CastDevice) ServiceEntry() *zeroconf.ServiceEntry {
 	return nil
 }
 
-func (d CastDevice) Entry() *dns.CastEntry {
-	return nil
+func (d CastDevice) svcEntryTemplate() *zeroconf.ServiceEntry {
+	d.svcEntry = zeroconf.NewServiceEntry(
+		"",                 //! Instance will need to be changed later
+		"_googlecast._tcp", // Service type
+		"local")            // Domain name
+	d.svcEntry.Port = 8009
+	return d.svcEntry
 }
+
+func (d CastDevice) FromEntry(svcEntry *zeroconf.ServiceEntry) *CastDevice {
+	return &CastDevice{
+		CastEntry: dns.CastEntry{
+			Port: svcEntry.Port,
+			Name: svcEntry.HostName,
+			// TODO: should we check?
+			AddrV4:     svcEntry.AddrIPv4[0],
+			AddrV6:     svcEntry.AddrIPv6[0],
+			InfoFields: TxtRecordHelper(svcEntry.Text),
+			DeviceName: decode(TxtRecordHelper(svcEntry.Text)["fn"]),
+			Device:     decode(TxtRecordHelper(svcEntry.Text)["md"]),
+			UUID:       TxtRecordHelper(svcEntry.Text)["id"],
+		},
+		svcEntry: svcEntry,
+	}
+}
+
+func TxtRecordHelper(r []string) (info map[string]string) {
+	info = map[string]string{}
+	for _, value := range r {
+		if kv := strings.SplitN(value, "=", 2); len(kv) == 2 {
+			key := kv[0]
+			val := kv[1]
+			info[key] = val
+			// switch key {
+			// case "fn":
+			// 	castEntry.DeviceName = decode(val)
+			// case "md":
+			// 	castEntry.Device = decode(val)
+			// case "id":
+			// 	castEntry.UUID = val
+			// }
+		}
+	}
+	return
+}
+
+// func (d CastDevice) Entry() *dns.CastEntry {
+// 	return &d.CastEntry
+// }
 
 func (d CastDevice) HardwareAddr() net.HardwareAddr {
 	return d.HwAddr
