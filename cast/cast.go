@@ -3,6 +3,8 @@ package cast
 import (
 	"context"
 	"fmt"
+
+	// "goplay2/audio"
 	"goplay2/audio"
 	"goplay2/globals"
 	"goplay2/handlers"
@@ -30,6 +32,13 @@ type CastDevice struct {
 	HwAddr       net.HardwareAddr
 	dns.CastEntry
 }
+
+type Port uint
+
+const (
+	CHROMECAST       Port = 8009
+	CHROMECAST_GROUP Port = 32187
+)
 
 /*	CastDeviceEntry extends dns.CastDNSEntry
  *	by providing the MAC Address as well the associated
@@ -223,32 +232,61 @@ func discoverLocalInterfaces() []net.Interface {
 }
 
 func GetCastDevices(ifaceName string, timeoutSec uint) {
-	var iface *net.Interface
-	var err error
-	if ifaceName != "" {
-		if iface, err = net.InterfaceByName(ifaceName); err != nil {
-			log.Debugf("unable to find interface %q: %v", ifaceName, err)
-		}
+	iface, _ := net.InterfaceByName(ifaceName)
+	var opts = []zeroconf.ClientOption{}
+	// // Act as a client using a Network Interface
+	if iface != nil {
+		opts = append(opts, zeroconf.SelectIfaces([]net.Interface{*iface}))
 	}
+	resolver, err := zeroconf.NewResolver(opts...)
+	if err != nil {
+		log.Errorf("unable to create new zeroconf resolver: %s", err)
+	}
+	// //? Refrence: https://thomasnguyen.site/function-returning-channel-pattern-in-go
+	entries := make(chan *zeroconf.ServiceEntry)
+	go func(results <-chan *zeroconf.ServiceEntry) {
+		for entry := range results {
+			fmt.Printf("%v\n", entry)
+		}
+		//log.Log("No more entries.")
+	}(entries)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeoutSec))
 	defer cancel()
-	// Returns a <- chan CastEntry
-	//? Refrence: https://thomasnguyen.site/function-returning-channel-pattern-in-go
-	castEntryChan, err := dns.DiscoverCastDNSEntries(ctx, iface)
+	err = resolver.Browse(ctx, "_googlecast._tcp", "local", entries)
 	if err != nil {
-		log.Debugf("unable to discover chromecast devices: %v", err)
+		panic(fmt.Errorf("Failed to browse: %s", err.Error()))
 	}
-	// TODO: get MAC address
-	ii := 1
-	//? See go-chromecast.cmd.ls for use
-	for d := range castEntryChan {
-		fmt.Printf("%d) device=%q device_name=%q address=\"%s:%d\" uuid=%q",
-			ii, d.Device, d.DeviceName, d.AddrV4, d.Port, d.UUID)
-		ii++
-	}
-	if ii == 1 {
-		log.Error("no cast devices found on network")
-	}
+
+	<-ctx.Done()
+	// Wait some additional time to see debug messages on go routine shutdown.
+	// time.Sleep(1 * time.Second)
+	// var iface *net.Interface
+	// var err error
+	// if ifaceName != "" {
+	// 	if iface, err = net.InterfaceByName(ifaceName); err != nil {
+	// 		log.Debugf("unable to find interface %q: %v", ifaceName, err)
+	// 	}
+	// }
+	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(timeoutSec))
+	// defer cancel()
+	// // Returns a <- chan CastEntry
+	// //? Refrence: https://thomasnguyen.site/function-returning-channel-pattern-in-go
+	// castEntryChan, err := dns.DiscoverCastDNSEntries(ctx, iface)
+	// if err != nil {
+	// 	log.Debugf("unable to discover chromecast devices: %v", err)
+	// }
+	// // TODO: get MAC address
+	// ii := 1
+	// //? See go-chromecast.cmd.ls for use
+	// for d := range castEntryChan {
+	// 	fmt.Printf("%d) device=%q device_name=%q address=\"%s:%d\" uuid=%q",
+	// 		ii, d.Device, d.DeviceName, d.AddrV4, d.Port, d.UUID)
+	// 	ii++
+	// }
+	// if ii == 1 {
+	// 	log.Error("no cast devices found on network")
+	// }
 }
 
 // func CreateVirtualAirplayReciever(device *CastDevice) {
