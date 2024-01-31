@@ -2,11 +2,12 @@ package cast
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/hashicorp/mdns"
+	"github.com/grandcat/zeroconf"
 	"github.com/vishen/go-chromecast/dns"
 )
 
@@ -50,24 +51,40 @@ func Test_GetCastDevices(t *testing.T) {
 	}
 }
 
-func TestGeneralDiscovery(t *testing.T) {
-	service := "_googlecast._tcp"
-	// domain := "local"
-	// waitTime := 10
-	// Discover all services on the network (e.g. _workstation._tcp)
-	// resolver, err := zeroconf.NewResolver(nil)
-	// mdns.Query(mdns.DefaultParams(service))
-	// q := mdns.DefaultParams(service)
-	entriesCh := make(chan *mdns.ServiceEntry, 4)
-	go func() {
-		for entry := range entriesCh {
-			t.Logf("Got new entry: %v\n", entry)
-		}
-	}()
-
-	// Start the lookup
-	if e := mdns.Lookup(service, entriesCh); e != nil {
-		t.Fatalf("Lookup failed with: %s", e)
+// ! Good func
+func Test_BrowseVsLookup(t *testing.T) {
+	ifaceName := "eth0"
+	iface, _ := net.InterfaceByName(ifaceName)
+	var opts = []zeroconf.ClientOption{}
+	// // Act as a client using a Network Interface
+	if iface != nil {
+		opts = append(opts, zeroconf.SelectIfaces([]net.Interface{*iface}))
 	}
-	close(entriesCh)
+	resolver, err := zeroconf.NewResolver(opts...)
+	if err != nil {
+		t.Errorf("unable to create new zeroconf resolver: %s", err)
+	}
+
+	entries := make(chan *zeroconf.ServiceEntry)
+	go func(results <-chan *zeroconf.ServiceEntry) {
+		for entry := range results {
+			mapB, err := json.Marshal(*entry)
+			if err != nil {
+				t.Errorf("unable to serialize: %s", err)
+			}
+			t.Logf("Content: %s", string(mapB))
+		}
+		t.Log("No more entries.")
+	}(entries)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+	err = resolver.Browse(ctx, "_googlecast._tcp", "local", entries)
+	if err != nil {
+		t.Fatalf("Failed to browse: %s", err.Error())
+	}
+
+	<-ctx.Done()
+	// Wait some additional time to see debug messages on go routine shutdown.
+	// time.Sleep(1 * time.Second)
 }
