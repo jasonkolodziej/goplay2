@@ -1,6 +1,0 @@
-{
-    "cmake.configureOnOpen": false,
-    "go.testFlags": [
-        "-test.v"
-    ]
-}

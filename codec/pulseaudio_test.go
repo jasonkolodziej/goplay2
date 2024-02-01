@@ -1,4 +1,5 @@
-//+build linux
+//go:build linux
+// +build linux
 
 package codec
 
@@ -37,7 +38,7 @@ func Test_dbToLinearVolume(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := dbToLinearVolume(tt.args.volume); got != tt.want {
+			if got := dbToLinearVolume(tt.args.volume); uint64(got) != tt.want {
 				t.Errorf("dbToLinearVolume() = %v, want %v", got, tt.want)
 			}
 		})
