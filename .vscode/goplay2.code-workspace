@@ -18,12 +18,12 @@
 		"version": "0.2.0",
 		"configurations": [
 			{
-				"name": "Build",
+				"name": "Launch Package",
 				"type": "go",
 				"request": "launch",
-				"mode": "core",
+				"mode": "auto",
 				"program": "${workspaceFolder}/${relativeFileDirname}",
-				"args": []
+				"args": ["build"]
 			},
 		// {
 		//   "name": "Launch test function",
