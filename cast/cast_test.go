@@ -53,7 +53,7 @@ func Test_GetCastDevices(t *testing.T) {
 
 // ! Good func
 func Test_BrowseVsLookup(t *testing.T) {
-	ifaceName := "eth0"
+	ifaceName := "wlan0"
 	iface, _ := net.InterfaceByName(ifaceName)
 	var opts = []zeroconf.ClientOption{}
 	// // Act as a client using a Network Interface
