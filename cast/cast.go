@@ -147,11 +147,13 @@ func (a AirplayDevice) RTSPHandler(clockDelay *int) (*handlers.Rstp, error) {
 	return a.rHandle, nil
 }
 
-/*	RunRTSP will ask internally for the RTSPHandler a AirplayDevice
-*	and respectfully pass clockDelay if a.clock's delay has not been set yet.
-*	if and when a.rHandler is set then the function will invoke rtsp.RunRtspServer
-*	returning an error at any point.
- */
+/*
+RunRTSP
+
+	Asks for AirplayDevice.RTSPHandler() and respectfully pass clockDelay if AirplayDevice.clock delay has not been set yet.
+	If and when AirplayDevice.rHandler is set, then the function will internally invoke rtsp.RunRtspServer
+	returning an error at any point.
+*/
 func (a AirplayDevice) RunRTSP(clockDelay *int) error {
 	// h, err := a.RTSPHandler(clockDelay)
 	if h, err := a.RTSPHandler(clockDelay); err != nil {
@@ -164,8 +166,11 @@ func (a AirplayDevice) RunRTSP(clockDelay *int) error {
 	return nil
 }
 
-// discoverLocalInterfaces disovers interfaces used
-// by the device executing this function
+/*
+discoverLocalInterfaces
+
+	disovers interfaces used by the device executing this function
+*/
 func discoverLocalInterfaces() []net.Interface {
 	var ret []net.Interface
 	netFaces, err := net.Interfaces()
