@@ -52,10 +52,14 @@ func main() {
 			ipStringAddr = append(ipStringAddr, v.IP.String())
 		}
 	}
-	homekit.Device = homekit.NewAccessory(macAddress, config.Config.DeviceUUID, airplayDeviceMin())
+	homekit.Device = homekit.NewAccessory(macAddress, config.Config.DeviceUUID, airplayDevice())
 	log.Printf("Starting goplay for device %v", homekit.Device)
-	homekit.Server, err = homekit.NewServer(macAddress, config.Config.DeviceName, ipStringAddr)
 
+	homekit.Server, err = homekit.NewServer(macAddress, config.Config.DeviceName, ipStringAddr)
+	if err != nil {
+		panic(err)
+	}
+	// homekit.Server.Context.ActiveConnections()
 	server, err := zeroconf.Register(config.Config.DeviceName, "_airplay._tcp", "local.",
 		7000, homekit.Device.ToRecords(), []net.Interface{*iFace})
 	if err != nil {
