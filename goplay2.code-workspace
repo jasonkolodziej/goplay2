@@ -64,18 +64,40 @@
 				"type": "pickString",
 				"options": [],
 				"description": "Pick a Function to Test"
+			},
+			{
+				"id": "setName",
+				"type": "promptString",
+				// "options": [],
+				"default": "${workspaceFolder}",
+				"description": "Pick a Function to Test"
 			}
 		],
 		"tasks": [
-			{
-				"label": "Build and run",
-				"type": "shell",
-				"command": "go build",
-				"group": {
-					"kind": "build",
-					"isDefault": true
-				},
-			}
+			// {
+			// 	"label": "Build and run",
+			// 	"type": "shell",
+			// 	"command": "go build",
+			// 	"group": {
+			// 		"kind": "build",
+			// 		"isDefault": true
+			// 	},
+			// 	"args" : ["-o", "${input:setName}"]
+			// },
+			// {
+			// 	"type": "go",
+			// 	"label": "go: build",
+			// 	"command": "build",
+			// 	"args": [
+			// 		"${fileDirname}",
+			// 		"-o", "${input:setName}"
+			// 	],
+			// 	"problemMatcher": [
+			// 		"$go"
+			// 	],
+			// 	"group": "build",
+			// 	"detail": "cd /home/pi/goplay2; go build ${fileDirname}"
+			// }
 		]
 	}
 }
