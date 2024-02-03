@@ -24,6 +24,20 @@
 		"version": "0.2.0",
 		"configurations": [
 			{
+				"name": "Launch Binary Debug",
+				"type": "go",
+				"request": "launch",
+				"mode": "auto",
+				"program": "${fileDirname}",
+				"asRoot": true,
+				"preLaunchTask": {
+					"task": "setcap",
+					"type": "shell"
+				},
+				"args": ["-i=wlan0", ""],
+				"showLog": true,
+			},
+			{
 				"name": "Launch Package",
 				"type": "go",
 				"request": "launch",
@@ -79,7 +93,7 @@
 				"description": "Pick a Function to Test"
 			}
 		],
-		"tasks": [
+		// "tasks": [
 			// {
 			// 	"label": "Build and run",
 			// 	"type": "shell",
@@ -104,6 +118,6 @@
 			// 	"group": "build",
 			// 	"detail": "cd /home/pi/goplay2; go build ${fileDirname}"
 			// }
-		]
+		// ]
 	}
 }

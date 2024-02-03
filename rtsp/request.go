@@ -50,6 +50,10 @@ type Request struct {
 	Body []byte
 }
 
+func (req *Request) Log() {
+	fmt.Printf()
+}
+
 // Read reads a request.
 func (req *Request) Read(rb *bufio.Reader) error {
 	byts, err := readBytesLimited(rb, ' ', requestMaxMethodLength)

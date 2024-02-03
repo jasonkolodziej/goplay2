@@ -1,0 +1,53 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "go",
+			"label": "go: test workspace",
+			"command": "test",
+			"args": [
+				"./..."
+			],
+			"problemMatcher": [
+				"$go"
+			],
+			"group": "test",
+			"detail": "cd /home/pi/goplay2; go test ./...",
+			"dependsOn":[
+				"go: build workspace",
+				"setcap"
+			]
+		},
+		{			"label": "setcap",
+			"problemMatcher": "$go",
+			"type": "shell",
+			"command": "sudo setcap 'cap_net_bind_service=+ep' ./goplay2",
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "new"
+			  },
+			  "detail": "set capabilities",
+			  "dependsOn":["go: build workspace"]
+		},
+		{
+			"type": "go",
+			"label": "go: build workspace",
+			"command": "build",
+			// "args": [
+			// 	"./..."
+			// ],
+			"problemMatcher": [
+				"$go"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "cd /home/pi/goplay2; go build ./...",
+		},
+	]
+}
