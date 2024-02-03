@@ -2,14 +2,15 @@ package handlers
 
 import (
 	"bytes"
+	"goplay2/homekit"
+	"goplay2/rtsp"
+	"strings"
+
 	"github.com/brutella/hc/crypto"
 	"github.com/brutella/hc/hap"
 	"github.com/brutella/hc/hap/pair"
 	"github.com/brutella/hc/util"
-	"goplay2/homekit"
-	"goplay2/rtsp"
 	"howett.net/plist"
-	"strings"
 )
 
 func (r *Rstp) OnPairSetup(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response, error) {
@@ -79,7 +80,7 @@ func (r *Rstp) OnPairVerify(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response,
 		return &rtsp.Response{StatusCode: rtsp.StatusInternalServerError}, err
 	}
 	body := out.BytesBuffer().Bytes()
-
+	// rtsp.BodyHelper(body)
 	// When key verification is done, switch to a secure session
 	// based on the negotiated shared session key
 	b := out.GetByte(pair.TagSequence)

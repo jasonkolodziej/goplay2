@@ -2,8 +2,12 @@ package rtsp
 
 import (
 	"bufio"
+	"encoding/hex"
+	"fmt"
 	"goplay2/globals"
+	"log"
 	"net"
+	"reflect"
 )
 
 const (
@@ -110,4 +114,53 @@ func parseRequest(br *bufio.Reader) (*Request, error) {
 		return nil, err
 	}
 	return &req, nil
+}
+
+func BodyHelper(obj any) {
+	ref := reflect.ValueOf(obj)
+	typ := reflect.TypeOf(obj)
+	switch ref.Kind() {
+	// if its a pointer, resolve its value
+	case reflect.Ptr:
+		typ = reflect.PtrTo(typ)
+		ref = reflect.Indirect(ref)
+	case reflect.Interface:
+		typ = typ.Elem()
+		ref = ref.Elem()
+	case reflect.Struct:
+		break
+	default:
+		// should double check we now
+		// have a struct (could still be anything)
+		log.Fatal("unexpected type")
+
+	}
+	log.Printf("Type %s: %v\n",
+		typ.Name(), ref)
+}
+
+func (req *Request) Log() {
+	// switch req.Method {
+	// case "GET":
+	// 	log.Printf("%s %s %s\n", req.Method, req.URL, req.URL.Scheme)
+	// case "POST":
+	// 	log.Printf("%s %s %s\n", req.Method, req.Path, req.URL.Scheme)
+	// }
+	var headers string
+	for k, v := range req.Header {
+		headers = string(fmt.Appendf([]byte(headers), "%s: %v\n", k, v))
+	}
+	// if req.Method == "POST" && req.Query != "" {
+	// 	log.Printf("%s\n", req.Query)
+	// }
+	log.Printf("%s", fmt.Sprintf("\n%s %s %s\n%s%s\nBody length: %d\n", req.Method, req.URL,
+		req.URL.Scheme, headers, hex.EncodeToString(req.Body), len(req.Body)))
+}
+func (req *Response) Log() {
+	var headers string
+	for k, v := range req.Header {
+		headers = string(fmt.Appendf([]byte(headers), "%s: %v\n", k, v))
+	}
+	log.Printf("%s", fmt.Sprintf("\n%s %d %s\n%s%s\nBody length: %d\n", rtspProtocol10, req.StatusCode,
+		StatusMessages[req.StatusCode], headers, hex.EncodeToString(req.Body), len(req.Body)))
 }

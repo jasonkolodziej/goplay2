@@ -50,22 +50,6 @@ type Request struct {
 	Body []byte
 }
 
-func (req *Request) Log() {
-	switch req.Method {
-	case "GET":
-		fmt.Printf("%s %s %s\n", req.Method, req.URL, req.URL.Scheme)
-	case "POST":
-		fmt.Printf("%s %s %s\n", req.Method, req.Path, req.URL.Scheme)
-	}
-	for k, v := range req.Header {
-		fmt.Printf("%s: %v\n", k, v)
-	}
-	if req.Method == "POST" && req.Query != "" {
-		fmt.Printf("%s\n", req.Query)
-	}
-	fmt.Printf("%b\nBody length: %d\n", req.Body, len(req.Body))
-}
-
 // Read reads a request.
 func (req *Request) Read(rb *bufio.Reader) error {
 	byts, err := readBytesLimited(rb, ' ', requestMaxMethodLength)

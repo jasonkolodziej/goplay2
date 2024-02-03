@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"goplay2/homekit"
 	"goplay2/rtsp"
 	"strings"
@@ -61,12 +60,12 @@ func (r *Rstp) OnGetInfo(req *rtsp.Request) (*rtsp.Response, error) {
 		if _, err := plist.Unmarshal(req.Body, &content); err != nil {
 			return &rtsp.Response{StatusCode: rtsp.StatusBadRequest}, err
 		}
-		fmt.Printf("%v\n", content)
+		rtsp.BodyHelper(content)
 	}
 
 	responseBody := NewGetInfoResponse(homekit.Device.Deviceid, homekit.Device.Features.ToUint64(),
 		homekit.Device.Pi.String(), homekit.Device.Psi.String(), homekit.Device.Srcvers)
-	fmt.Printf("%v\n", responseBody)
+	rtsp.BodyHelper(responseBody)
 
 	if body, err := plist.Marshal(*responseBody, plist.AutomaticFormat); err == nil {
 		return &rtsp.Response{StatusCode: rtsp.StatusOK, Header: rtsp.Header{
