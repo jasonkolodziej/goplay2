@@ -1,4 +1,5 @@
 {
+	//? https://code.visualstudio.com/docs/editor/variables-reference
 	"folders": [
 		{
 			"path": "."
@@ -17,6 +18,100 @@
 			"golang.go"
 		]
 	},
+	"tasks": {
+		"version": "2.0.0",
+		// "tasks": [
+		// 	{
+		// 		"label": "My Task",
+		// 		"command": "echo hello",
+		// 		"type": "shell",
+		// 		"args": [],
+		// 		"problemMatcher": [
+		// 			"$tsc"
+		// 		],
+		// 		"presentation": {
+		// 			"reveal": "always"
+		// 		},
+		// 		"group": "build"
+		// 	}
+		// ]
+		"tasks": [
+			{
+				"type": "go",
+				"label": "go: test workspace",
+				"command": "test",
+				"args": [
+					"./..."
+				],
+				"problemMatcher": [
+					"$go"
+				],
+				"group": "test",
+				"detail": "cd /home/pi/goplay2; go test ./...",
+				"dependsOn":[
+					"go: build",
+				]
+			},
+			{			
+				"label": "BuildBinary",
+				"problemMatcher": "$go",
+				"type": "shell",
+				"command": "sudo setcap 'cap_net_bind_service=+ep' ./${input:binaryName}",
+				"group": {
+					"kind": "build",
+					"isDefault": true
+				},
+				"presentation": {
+					"reveal": "always",
+					"panel": "new"
+				  },
+				  "detail": "build workspace & set capabilities",
+				  "dependsOn":["go: build"]
+			},
+			{			
+				"label": "go: clean workspace",
+				"problemMatcher": "$go",
+				"type": "shell",
+				"command": "rm -rf ${input:binaryName} goplay",
+				"group": {
+					"kind": "build",
+				},
+				"presentation": {
+					"reveal": "silent",
+					"panel": "shared"
+				  },
+				  "detail": "clean built workspace - <built-binary> <binary-data-dir>",
+			},
+			{
+				"label": "go: build",
+				"type": "go",
+				"command": "build",
+				"args": [
+					"-o", "${input:binaryName}"
+				],
+				"problemMatcher": [
+					"$go"
+				],
+				"presentation": {
+					"reveal": "silent",
+					"panel": "shared"
+				  },
+				"group": {
+					"kind": "build",
+					"isDefault": false
+				},
+				"detail": "cd /home/pi/goplay2; go build . -o <some-name>",
+			},
+		],
+		"inputs": [
+			{
+				"id": "binaryName",
+				"type": "promptString",
+				"default": "${workspaceFolderBasename}",
+				"description": "Choose a name for the program built - default=Go Modules name"
+			}
+		]
+	},
 	"launch": {
 		// Use IntelliSense to learn about possible attributes.
 		// Hover to view descriptions of existing attributes.
@@ -24,47 +119,17 @@
 		"version": "0.2.0",
 		"configurations": [
 			{
-				"name": "Launch Binary Debug",
+				"name": "Debug Binary",
 				"type": "go",
 				"request": "launch",
-				"mode": "auto",
-				"program": "${fileDirname}",
+				"mode": "exec",
+				"program": "${fileWorkspaceFolder}/${input:binaryName}",
+				"preLaunchTask": "BuildBinary",
 				"asRoot": true,
-				"preLaunchTask": {
-					"task": "setcap",
-					"type": "shell"
-				},
-				"args": ["-i=wlan0", ""],
-				"showLog": true,
+				"args": [
+					"-i=${input:interfaceName}",
+				]
 			},
-			{
-				"name": "Launch Package",
-				"type": "go",
-				"request": "launch",
-				"mode": "auto",
-				"program": "${workspaceFolder}/${relativeFileDirname}",
-				"args": ["build"]
-			},
-		// {
-		//   "name": "Launch test function",
-		//   "type": "go",
-		//   "request": "launch",
-		//   "mode": "test",
-		//   "program": "${workspaceFolder}/${relativeFileDirname}",
-		//   "args": [
-		//     "-test.run",
-		//     "MyTestFunction"
-		//   ]
-		// },
-		// {
-		//   "name": "Test Current File",
-		//   "type": "go",
-		//   "request": "launch",
-		//   "mode": "test",
-		//   "program": "${workspaceFolder}/${relativeFileDirname}",
-		//   "args": ["-test.v", "-test.run", "${input:pickFunction}" ],
-		//   "showLog": true
-		// }
 			{
 				"name": "Test Current File",
 				"type": "go",
@@ -80,44 +145,24 @@
 		],
 		"inputs": [
 			{
-				"id": "pickFunction",
+				"id": "interfaceName",
+				"description": "Name of Interface to use",
+				"default": "eth0",
 				"type": "pickString",
-				"options": [],
-				"description": "Pick a Function to Test"
+				"options": ["wlan0"]
 			},
 			{
-				"id": "setName",
+				"id": "binaryName",
 				"type": "promptString",
-				// "options": [],
-				"default": "${workspaceFolder}",
-				"description": "Pick a Function to Test"
+				"default": "${workspaceFolderBasename}",
+				"description": "Choose a name for the program built - default=Go Modules name"
 			}
 		],
-		// "tasks": [
-			// {
-			// 	"label": "Build and run",
-			// 	"type": "shell",
-			// 	"command": "go build",
-			// 	"group": {
-			// 		"kind": "build",
-			// 		"isDefault": true
-			// 	},
-			// 	"args" : ["-o", "${input:setName}"]
-			// },
-			// {
-			// 	"type": "go",
-			// 	"label": "go: build",
-			// 	"command": "build",
-			// 	"args": [
-			// 		"${fileDirname}",
-			// 		"-o", "${input:setName}"
-			// 	],
-			// 	"problemMatcher": [
-			// 		"$go"
-			// 	],
-			// 	"group": "build",
-			// 	"detail": "cd /home/pi/goplay2; go build ${fileDirname}"
-			// }
-		// ]
-	}
+		"compounds": [
+			{
+				"name": "Compound",
+				"configurations": []
+			}
+		]
+	},
 }

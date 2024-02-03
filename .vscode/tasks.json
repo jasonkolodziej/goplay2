@@ -1,53 +1,85 @@
-{
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "go",
-			"label": "go: test workspace",
-			"command": "test",
-			"args": [
-				"./..."
-			],
-			"problemMatcher": [
-				"$go"
-			],
-			"group": "test",
-			"detail": "cd /home/pi/goplay2; go test ./...",
-			"dependsOn":[
-				"go: build workspace",
-				"setcap"
-			]
-		},
-		{			"label": "setcap",
-			"problemMatcher": "$go",
-			"type": "shell",
-			"command": "sudo setcap 'cap_net_bind_service=+ep' ./goplay2",
-			"group": {
-				"kind": "test",
-				"isDefault": true
-			},
-			"presentation": {
-				"reveal": "always",
-				"panel": "new"
-			  },
-			  "detail": "set capabilities",
-			  "dependsOn":["go: build workspace"]
-		},
-		{
-			"type": "go",
-			"label": "go: build workspace",
-			"command": "build",
-			// "args": [
-			// 	"./..."
-			// ],
-			"problemMatcher": [
-				"$go"
-			],
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
-			"detail": "cd /home/pi/goplay2; go build ./...",
-		},
-	]
-}
+// {
+// 	"version": "2.0.0",
+// 	"tasks": [
+// 		{
+// 			"type": "go",
+// 			"label": "go: test workspace",
+// 			"command": "test",
+// 			"args": [
+// 				"./..."
+// 			],
+// 			"problemMatcher": [
+// 				"$go"
+// 			],
+// 			"group": "test",
+// 			"detail": "cd /home/pi/goplay2; go test ./...",
+// 			"dependsOn":[
+// 				"go: build",
+// 			]
+// 		},
+// 		{			
+// 			"label": "BuildBinary",
+// 			"problemMatcher": "$go",
+// 			"type": "shell",
+// 			"command": "sudo setcap 'cap_net_bind_service=+ep' ${input:setBinaryName}",
+// 			"group": {
+// 				"kind": "build",
+// 				"isDefault": true
+// 			},
+// 			"presentation": {
+// 				"reveal": "always",
+// 				"panel": "new"
+// 			  },
+// 			  "detail": "build workspace & set capabilities",
+// 			  "dependsOn":["go: build"]
+// 		},
+// 		{			
+// 			"label": "go: clean workspace",
+// 			"problemMatcher": "$go",
+// 			"type": "shell",
+// 			"command": "rm -rf ${input:binaryName} goplay",
+// 			"group": {
+// 				"kind": "build",
+// 			},
+// 			"presentation": {
+// 				"reveal": "silent",
+// 				"panel": "shared"
+// 			  },
+// 			  "detail": "clean built workspace - <built-binary> <binary-data-dir>",
+// 		},
+// 		{
+// 			"label": "go: build",
+// 			"type": "go",
+// 			"command": "build",
+// 			"args": [
+// 				"-o", "${input:setBinaryName}"
+// 			],
+// 			"problemMatcher": [
+// 				"$go"
+// 			],
+// 			"presentation": {
+// 				"reveal": "silent",
+// 				"panel": "shared"
+// 			  },
+// 			"group": {
+// 				"kind": "build",
+// 				"isDefault": false
+// 			},
+// 			"detail": "cd /home/pi/goplay2; go build . -o <some-name>",
+// 		},
+// 	],
+// 	"inputs": [
+// 		{
+// 			"id": "setBinaryName",
+// 			"type": "promptString",
+// 			"default": "${workspaceFolderBasename}",
+// 			"description": "Choose a name for the program built - default=Go Modules name"
+// 		},
+// 		{
+// 			"id": "binaryName",
+// 			"type": "promptString",
+// 			"default": "${workspaceFolderBasename}",
+// 			"description": "Choose a name for the program built - default=Go Modules name"
+// 		}
+// 	]
+// }
