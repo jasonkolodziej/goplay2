@@ -77,11 +77,13 @@ func (s *Server) handleRstpConnection(conn *Conn) {
 			return
 		}
 		s.h.OnRequest(conn, request)
+		request.Log()
 		response, err := s.h.Handle(conn, request)
 		if err != nil {
 			globals.ErrLog.Printf("Error handling RSTP request %v \n", err)
 			return
 		}
+		response.Log()
 		err = s.flushResponse(conn, request, response)
 		if err != nil {
 			globals.ErrLog.Printf("Error flusing RSTP response %v \n", err)

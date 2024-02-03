@@ -51,7 +51,19 @@ type Request struct {
 }
 
 func (req *Request) Log() {
-	fmt.Printf()
+	switch req.Method {
+	case "GET":
+		fmt.Printf("%s %s %s\n", req.Method, req.URL, req.URL.Scheme)
+	case "POST":
+		fmt.Printf("%s %s %s\n", req.Method, req.Path, req.URL.Scheme)
+	}
+	for k, v := range req.Header {
+		fmt.Printf("%s: %v\n", k, v)
+	}
+	if req.Method == "POST" && req.Query != "" {
+		fmt.Printf("%s\n", req.Query)
+	}
+	fmt.Printf("%v\nBody length: %d", req.Body, len(req.Body))
 }
 
 // Read reads a request.
