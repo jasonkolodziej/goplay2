@@ -12,7 +12,9 @@
 	},
 	"extensions": {
 		"recommendations": [
-			"bierner.markdown-mermaid"
+			"bierner.markdown-mermaid",
+			"eamodio.gitlens",
+			"golang.go"
 		]
 	},
 	"launch": {
