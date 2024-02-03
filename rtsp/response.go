@@ -134,11 +134,11 @@ type Response struct {
 }
 
 func (req *Response) Log() {
-	fmt.Printf("%s %d %s\n", rtspProtocol10, req.StatusCode, req.StatusMessage)
+	fmt.Printf("%s %d %s\n", rtspProtocol10, req.StatusCode, StatusMessages[req.StatusCode])
 	for k, v := range req.Header {
 		fmt.Printf("%s: %v\n", k, v)
 	}
-	fmt.Printf("%v\nBody length: %d", req.Body, len(req.Body))
+	fmt.Printf("%b\nBody length: %d\n", req.Body, len(req.Body))
 }
 
 // Read reads a response.

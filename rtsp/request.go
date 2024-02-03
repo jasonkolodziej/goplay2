@@ -63,7 +63,7 @@ func (req *Request) Log() {
 	if req.Method == "POST" && req.Query != "" {
 		fmt.Printf("%s\n", req.Query)
 	}
-	fmt.Printf("%v\nBody length: %d", req.Body, len(req.Body))
+	fmt.Printf("%b\nBody length: %d\n", req.Body, len(req.Body))
 }
 
 // Read reads a request.
