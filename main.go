@@ -52,7 +52,7 @@ func main() {
 			ipStringAddr = append(ipStringAddr, v.IP.String())
 		}
 	}
-	homekit.Device = homekit.NewAccessory(macAddress, config.Config.DeviceUUID, airplayDevice())
+	homekit.Device = homekit.NewAccessory(macAddress, config.Config.DeviceUUID, FeatAirplayDevice())
 	log.Printf("Starting goplay for device %v", homekit.Device)
 
 	homekit.Server, err = homekit.NewServer(macAddress, config.Config.DeviceName, ipStringAddr)

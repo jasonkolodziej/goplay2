@@ -5,6 +5,8 @@ import "goplay2/rtsp"
 func (r *Rstp) OnPostWeb(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response, error) {
 
 	switch req.Path {
+	case "auth-setup":
+		return r.OnPairSetup(conn, req)
 	case "pair-setup":
 		return r.OnPairSetup(conn, req)
 	case "pair-verify":

@@ -16,7 +16,7 @@ type UUID struct {
 type Accessory struct {
 	Srcvers   string
 	Deviceid  string
-	Features  globals.Features
+	Features  globals.Feat
 	flags     string
 	model     string
 	protovers string
@@ -31,10 +31,10 @@ type Accessory struct {
 }
 
 func NewAccessory(deviceId string,
-	currentUuid string, features globals.Features) *Accessory {
+	currentUuid string, features globals.Feat) *Accessory {
 	var deviceUuid = uuid.MustParse(currentUuid)
 	return &Accessory{
-		Srcvers:   "366.0",
+		Srcvers:   "377.0", // 366.0
 		Deviceid:  deviceId,
 		Features:  features,
 		flags:     "0x4",
@@ -76,7 +76,7 @@ func (t *Accessory) ToRecords() []string {
 		case "UUID":
 			results[i] += value.Interface().(UUID).ToRecord()
 		case "Features":
-			results[i] += value.Interface().(globals.Features).ToRecord()
+			results[i] += value.Interface().(globals.Feat).ToRecord()
 		default:
 			panic(fields.Field(i).Type.Name())
 		}

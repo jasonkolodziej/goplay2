@@ -5,8 +5,9 @@ import (
 	"goplay2/globals"
 	"goplay2/homekit"
 	"goplay2/rtsp"
-	"howett.net/plist"
 	"strings"
+
+	"howett.net/plist"
 )
 
 type setupStreamRequest struct {
@@ -45,9 +46,22 @@ type setupSteamsResponse struct {
 	Streams []setupStream `plist:"streams"`
 }
 
+/*
+OnSetup
+
+	The SETUP request initializes a record session. It sends all the necessary transport informations.
+	Three UDP channels are setup:
+
+	channel	description
+	-------------------
+	server	audio data
+	control	sync and retransmit requests
+	timing	master clock sync
+*/
 func (r *Rstp) OnSetupWeb(req *rtsp.Request) (*rtsp.Response, error) {
 
-	if contentType, found := req.Header["Content-Type"]; found && strings.EqualFold(contentType[0], "application/x-apple-binary-plist") {
+	if contentType, found := req.Header["Content-Type"]; found &&
+		strings.EqualFold(contentType[0], "application/x-apple-binary-plist") {
 		var content setupRtsp
 		if _, err := plist.Unmarshal(req.Body, &content); err != nil {
 			return &rtsp.Response{StatusCode: rtsp.StatusBadRequest}, nil

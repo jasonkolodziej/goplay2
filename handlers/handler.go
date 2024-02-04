@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	"github.com/brutella/hc/hap"
 	"goplay2/audio"
 	"goplay2/homekit"
 	"goplay2/pairing"
 	"goplay2/rtsp"
 	"log"
+
+	"github.com/brutella/hc/hap"
 )
 
 type Rstp struct {
@@ -42,6 +43,8 @@ func (r *Rstp) Handle(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response, error
 		return r.OnGetWeb(req)
 	case "POST":
 		return r.OnPostWeb(conn, req)
+	case "OPTIONS": // TODO
+		return r.OnPostWeb(conn, req)
 	case "SETUP":
 		return r.OnSetupWeb(req)
 	case "GET_PARAMETER":
@@ -65,3 +68,16 @@ func (r *Rstp) Handle(conn *rtsp.Conn, req *rtsp.Request) (*rtsp.Response, error
 func (r *Rstp) OnResponse(conn *rtsp.Conn, resp *rtsp.Response) {
 	log.Printf("response sent : body %d", len(resp.Body))
 }
+
+// The ANNOUNCE request tells the RTSP server about stream properties using [SDP]. Codec informations and encryption keys are of particular interest.
+
+// The OPTIONS request asks the RTSP server for its supported methods. Apple TV supports the following methods:
+// ANNOUNCE, SETUP, RECORD, PAUSE, FLUSH, TEARDOWN, OPTIONS, GET_PARAMETER, SET_PARAMETER, POST and GET.
+// OPTIONS * RTSP/1.0
+// CSeq: 3
+// User-Agent:
+// RTSP/1.0 200 OK
+// Public: ANNOUNCE, SETUP, RECORD, PAUSE, FLUSH, TEARDOWN, OPTIONS,
+// GET_PARAMETER, SET_PARAMETER, POST, GET
+// Server: AirTunes/130.14
+// CSeq: 3
